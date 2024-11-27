@@ -52,18 +52,27 @@ class HomeController extends GetxController {
 
   Future<void> criarRegistrosEventoDetalhes(String eventoId) async {
     try {
+      // Gerar a lista de horários
       List<String> horarios = gerarHorarios();
 
-      List<Map<String, dynamic>> detalhes = horarios.map((horario) {
+      // Criar os detalhes com o campo 'ordem' sequencial
+      List<Map<String, dynamic>> detalhes = horarios.asMap().entries.map((entry) {
+        int index = entry.key; // Índice do horário na lista
+        String horario = entry.value; // Valor do horário
         return {
           'id_evento': eventoId,
           'horario': horario,
           'membro': '',
+          'ordem': index + 1, // A ordem começa de 1
           'status': true,
         };
       }).toList();
 
+      // Inserir os detalhes na tabela Eventos_detalhes
       await cliente.from('Eventos_detalhes').insert(detalhes);
+
+      // Atualizar os registros padrão após a criação
+      atualizarRegistrosPadraoEventoDetalhes(eventoId);
 
       print('Registros criados em Eventos_detalhes com sucesso!');
     } catch (e) {
@@ -89,22 +98,64 @@ class HomeController extends GetxController {
 
   Future<void> criarRegistrosEventoDetalhesPorHorario(String eventoId, String horarioInicial, String horarioFinal) async {
     try {
+      // Gerar os horários no intervalo fornecido
       List<String> horarios = gerarHorariosPorIntervalo(horarioInicial, horarioFinal);
 
-      List<Map<String, dynamic>> detalhes = horarios.map((horario) {
+      // Criar os detalhes com o campo 'ordem' sequencial
+      List<Map<String, dynamic>> detalhes = horarios.asMap().entries.map((entry) {
+        int index = entry.key; // Índice do horário na lista
+        String horario = entry.value; // Valor do horário
         return {
           'id_evento': eventoId,
           'horario': horario,
           'membro': '',
+          'ordem': index + 1, // A ordem começa de 1
           'status': true,
         };
       }).toList();
 
+      // Inserir os detalhes na tabela Eventos_detalhes
       await cliente.from('Eventos_detalhes').insert(detalhes);
+
+      // Atualizar os registros padrão após a criação
+      atualizarRegistrosPadraoEventoDetalhes(eventoId);
 
       print('Registros criados em Eventos_detalhes com sucesso para o intervalo!');
     } catch (e) {
       print('Erro ao criar registros em Eventos_detalhes para o intervalo: $e');
+    }
+  }
+
+  Future<void> atualizarRegistrosPadraoEventoDetalhes(String eventoId) async {
+    try {
+      // Lista de horários fixos para atualização
+      List<Map<String, dynamic>> horariosAtualizar = [
+        {'horario': '06:00', 'membro': 'MADRUGADA', 'status': false},
+        {'horario': '06:15', 'membro': 'MADRUGADA', 'status': false},
+        {'horario': '19:30', 'membro': 'CULTO', 'status': false},
+        {'horario': '19:45', 'membro': 'CULTO', 'status': false},
+        {'horario': '20:00', 'membro': 'CULTO', 'status': false},
+      ];
+
+      for (var horario in horariosAtualizar) {
+        // Atualiza cada registro correspondente ao id_evento e horário
+        final response = await cliente
+            .from('Eventos_detalhes')
+            .update({
+              'membro': horario['membro'],
+              'status': horario['status'],
+            })
+            .eq('id_evento', eventoId)
+            .eq('horario', horario['horario']);
+
+        if (response == null || response.isEmpty) {
+          print('Nenhum registro encontrado para o horário ${horario['horario']} com id_evento $eventoId');
+        } else {
+          print('Registro atualizado com sucesso para o horário ${horario['horario']}');
+        }
+      }
+    } catch (e) {
+      print('Erro ao atualizar registros em Eventos_detalhes: $e');
     }
   }
 
@@ -262,7 +313,8 @@ class HomeController extends GetxController {
       final response = await cliente
           .from('Eventos_detalhes') // Nome da tabela
           .select('id, horario, membro') // Seleciona apenas os campos necessários
-          .eq('id_evento', eventoId); // Filtro pelo evento_id fornecido
+          .eq('id_evento', eventoId)
+          .order('ordem', ascending: false); // Filtro pelo evento_id fornecido
 
       if (response.isNotEmpty) {
         print('Detalhes do evento recuperados com sucesso!');
@@ -338,6 +390,69 @@ class HomeController extends GetxController {
       await deletarDetalhesEvento(eventoId);
     } else {
       print('Não foi possível deletar o evento principal. Os detalhes não serão deletados.');
+    }
+  }
+
+  Future<List<Map<String, String>>> gerarIntervalosLocais(List<Map<String, dynamic>> eventosDetalhes) async {
+    // Ordena a lista por horário
+    eventosDetalhes.sort((a, b) => a['horario'].compareTo(b['horario']));
+
+    List<Map<String, String>> intervalos = [];
+
+    for (int i = 0; i < eventosDetalhes.length - 1; i += 2) {
+      String horarioInicio = eventosDetalhes[i]['horario'];
+      String horarioFim = eventosDetalhes[i + 1]['horario'];
+      String membroInicio = eventosDetalhes[i]['membro'] ?? '';
+      String membroFim = eventosDetalhes[i + 1]['membro'] ?? '';
+
+      // Concatena os horários e os membros
+      String intervalo = '$horarioInicio a $horarioFim';
+      String membros = membroInicio.isNotEmpty && membroFim.isNotEmpty
+          ? '$membroInicio / $membroFim'
+          : membroInicio.isNotEmpty
+              ? membroInicio
+              : membroFim;
+
+      intervalos.add({'intervalo': intervalo, 'membros': membros});
+    }
+
+    // Verifica se sobrou um horário sem par
+    if (eventosDetalhes.length % 2 != 0) {
+      final ultimo = eventosDetalhes.last;
+      intervalos.add({'intervalo': '${ultimo['horario']} a ...', 'membros': ultimo['membro'] ?? ''});
+    }
+
+    return intervalos;
+  }
+
+  Future<List<Map<String, dynamic>>> buscarEventosDetalhes(String eventoId) async {
+    try {
+      final response = await cliente.from('Eventos_detalhes').select('horario, membro').eq('id_evento', eventoId).order('horario', ascending: true).then((value) => value);
+
+      if (response != null && response.isNotEmpty) {
+        return List<Map<String, dynamic>>.from(response);
+      } else {
+        print('Nenhum detalhe encontrado para o evento.');
+        return [];
+      }
+    } catch (e) {
+      print('Erro ao buscar eventos detalhes: $e');
+      return [];
+    }
+  }
+
+  void gerarRelatorioIntervalos(String eventoId) async {
+    final eventosDetalhes = await buscarEventosDetalhes(eventoId);
+
+    if (eventosDetalhes.isNotEmpty) {
+      final intervalos = await gerarIntervalosLocais(eventosDetalhes);
+
+      for (var intervalo in intervalos) {
+        print('Intervalo: ${intervalo['intervalo']}');
+        print('Membros: ${intervalo['membros']}');
+      }
+    } else {
+      print('Nenhum detalhe encontrado para o evento.');
     }
   }
 }

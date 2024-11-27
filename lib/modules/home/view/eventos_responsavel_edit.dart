@@ -70,17 +70,63 @@ class _EventosResponsavelEditPageState extends State<EventosResponsavelEditPage>
               style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
             ),
           ),
-          pw.Table.fromTextArray(
-            context: context,
-            headers: ['ID', 'Membro', 'Horário'],
-            data: homeController.eventosHorariosMarcados.map((evento) {
-              return [
-                evento['id'].toString(),
-                evento['membro'] ?? 'N/A',
-                evento['horario'] ?? 'N/A',
-              ];
-            }).toList(),
-            cellStyle: pw.TextStyle(font: regularFont), // Usando a fonte regular
+          pw.Table(
+            border: pw.TableBorder.all(), // Adiciona bordas à tabela
+            children: [
+              // Cabeçalho com fundo cinza claro
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColor(0.9, 0.9, 0.9)),
+                children: [
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(8),
+                    child: pw.Text(
+                      'Membro',
+                      style: pw.TextStyle(
+                        font: boldFont,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(8),
+                    child: pw.Text(
+                      'Horário',
+                      style: pw.TextStyle(
+                        font: boldFont,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              // Linhas dos dados
+              ...homeController.eventosHorariosMarcados.map((evento) {
+                return pw.TableRow(
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        evento['membro'] ?? 'N/A',
+                        style: pw.TextStyle(
+                          font: regularFont,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        evento['horario'] ?? 'N/A',
+                        style: pw.TextStyle(
+                          font: regularFont,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ],
           ),
         ],
       ),
