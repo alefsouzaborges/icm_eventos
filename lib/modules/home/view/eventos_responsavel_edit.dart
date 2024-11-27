@@ -64,7 +64,7 @@ class _EventosResponsavelEditPageState extends State<EventosResponsavelEditPage>
     final boldFont = await _loadFont('assets/fonts/Roboto-Bold.ttf');
     final imageLogo = await _loadImage('assets/images/logo_icm_original.png');
 
-    // Cabeçalho do documento
+    // Cabeçalho do documento//
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
