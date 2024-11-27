@@ -52,11 +52,17 @@ class _EventosResponsavelEditPageState extends State<EventosResponsavelEditPage>
     return font;
   }
 
+  Future<pw.ImageProvider> _loadImage(String imagePath) async {
+    final imageBytes = await rootBundle.load(imagePath);
+    return pw.MemoryImage(imageBytes.buffer.asUint8List());
+  }
+
   Future<pw.Document> generatePdf() async {
     final pdf = pw.Document();
 
     final regularFont = await _loadFont('assets/fonts/Roboto-Regular.ttf');
     final boldFont = await _loadFont('assets/fonts/Roboto-Bold.ttf');
+    final imageLogo = await _loadImage('assets/images/logo_icm_original.png');
 
     // Cabeçalho do documento
     pdf.addPage(
@@ -65,9 +71,22 @@ class _EventosResponsavelEditPageState extends State<EventosResponsavelEditPage>
         build: (context) => [
           pw.Header(
             level: 0,
-            child: pw.Text(
-              'Relatório de Eventos',
-              style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
+            child: pw.Column(
+              mainAxisSize: pw.MainAxisSize.min,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                pw.Container(
+                  width: 150,
+                  height: 150,
+                  child: pw.Image(imageLogo, fit: pw.BoxFit.contain),
+                ),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  eventoSelecionado[0]['nome_evento'].toString(),
+                  style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ],
             ),
           ),
           pw.Table(
